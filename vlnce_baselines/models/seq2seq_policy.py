@@ -102,6 +102,7 @@ class Seq2SeqNet(Net):
             + model_config.DEPTH_ENCODER.output_size
             + model_config.RGB_ENCODER.output_size
         )
+        print("rnn_input_size", rnn_input_size)
 
         if model_config.SEQ2SEQ.use_prev_action:
             rnn_input_size += self.prev_action_embedding.embedding_dim
