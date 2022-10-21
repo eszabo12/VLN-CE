@@ -3,10 +3,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 from gym import Space
 from habitat import Config
-# from habitat_baselines.common.baseline_registry import BaselineRegistry
-# from habitat_baselines.rl.models.rnn_state_encoder import (
-#     build_rnn_state_encoder,
-# )
+from habitat_baselines.common.baseline_registry import BaselineRegistry
+from habitat_baselines.rl.models.rnn_state_encoder import (
+    build_rnn_state_encoder,
+)
 from habitat_baselines.rl.ppo.policy import Net
 
 from vlnce_baselines.common.aux_losses import AuxLosses
@@ -14,40 +14,6 @@ from vlnce_baselines.models.encoders import resnet_encoders
 from vlnce_baselines.models.encoders.instruction_encoder import (
     InstructionEncoder,
 )
-# from vlnce_baselines.models.policy import ILPolicy
-
-
-# @BaselineRegistry.register_policy
-# class Seq2SeqPolicy(ILPolicy):
-#     def __init__(
-#         self,
-#         observation_space: Space,
-#         action_space: Space,
-#         model_config: Config,
-#     ):
-#         super().__init__(
-#             Seq2SeqNet(
-#                 observation_space=observation_space,
-#                 model_config=model_config,
-#                 num_actions=action_space.n,
-#             ),
-#             action_space.n,
-#         )
-
-#     @classmethod
-#     def from_config(
-#         cls, config: Config, observation_space: Space, action_space: Space
-#     ):
-#         config.defrost()
-#         config.MODEL.TORCH_GPU_ID = config.TORCH_GPU_ID
-#         config.freeze()
-
-#         return cls(
-#             observation_space=observation_space,
-#             action_space=action_space,
-#             model_config=config.MODEL,
-#         )
-
 
 class Seq2SeqNet(Net):
     """A baseline sequence to sequence network that performs single modality
@@ -89,8 +55,15 @@ class Seq2SeqNet(Net):
         )(
             model_config.RGB_ENCODER.output_size,
             normalize_visual_inputs=model_config.normalize_rgb,
-            trainable=model_config.RGB_ENCODER.trainable,
+            trainable=model_config.RGB_ENCODER.trainable, 
             spatial_output=False,
+        )
+
+        # Init the RNN state decoder, 512
+        rnn_input_size = ( 
+            self.instruction_encoder.output_size
+            + model_config.DEPTH_ENCODER.output_size
+            + model_config.RGB_ENCODER.output_size
         )
 
         if model_config.SEQ2SEQ.use_prev_action:

@@ -37,6 +37,7 @@ class InstructionEncoder(nn.Module):
                     embeddings=self._load_embeddings(),
                     freeze=not self.config.fine_tune_embeddings,
                 )
+                print(self.embedding_layer)
             else:  # each embedding initialized to sampled Gaussian
                 self.embedding_layer = nn.Embedding(
                     num_embeddings=config.vocab_size,

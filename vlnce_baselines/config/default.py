@@ -223,7 +223,7 @@ _C.MODEL.INSTRUCTION_ENCODER = CN()
 _C.MODEL.INSTRUCTION_ENCODER.sensor_uuid = "instruction"
 _C.MODEL.INSTRUCTION_ENCODER.vocab_size = 2504
 _C.MODEL.INSTRUCTION_ENCODER.use_pretrained_embeddings = True
-_C.MODEL.INSTRUCTION_ENCODER.embedding_file = (
+_C.MODEL.INSTRUCTION_ENCODER.embedding_file = ( 
     "data/datasets/R2R_VLNCE_v1-3_preprocessed/embeddings.json.gz"
 )
 _C.MODEL.INSTRUCTION_ENCODER.dataset_vocab = (
@@ -243,7 +243,7 @@ _C.MODEL.RGB_ENCODER.trainable = False
 
 _C.MODEL.DEPTH_ENCODER = CN()
 _C.MODEL.DEPTH_ENCODER.cnn_type = "VlnResnetDepthEncoder"
-_C.MODEL.DEPTH_ENCODER.output_size = 128
+_C.MODEL.DEPTH_ENCODER.output_size = 512
 # type of resnet to use
 _C.MODEL.DEPTH_ENCODER.backbone = "resnet50"
 # path to DDPPO resnet weights

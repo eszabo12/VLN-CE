@@ -199,6 +199,7 @@ class TorchVisionResNet(nn.Module):
             resnet_output = self.cnn(normalize(rgb_observations))
 
         if self.spatial_output:
+            print("spatial output")
             b, c, h, w = resnet_output.size()
 
             spatial_features = (
