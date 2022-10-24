@@ -89,6 +89,7 @@ class VlnResnetDepthEncoder(nn.Module):
         Returns:
             [BATCH, OUTPUT_SIZE]
         """
+
         if "depth_features" in observations:
             x = observations["depth_features"]
         else:

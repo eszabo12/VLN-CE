@@ -59,13 +59,6 @@ class Seq2SeqNet(Net):
             spatial_output=False,
         )
 
-        # Init the RNN state decoder, 512
-        rnn_input_size = ( 
-            self.instruction_encoder.output_size
-            + model_config.DEPTH_ENCODER.output_size
-            + model_config.RGB_ENCODER.output_size
-        )
-
         if model_config.SEQ2SEQ.use_prev_action:
             self.prev_action_embedding = nn.Embedding(num_actions + 1, 32)
 
@@ -75,7 +68,7 @@ class Seq2SeqNet(Net):
             + model_config.DEPTH_ENCODER.output_size
             + model_config.RGB_ENCODER.output_size
         )
-        print("rnn_input_size", rnn_input_size)
+        # print("rnn_input_size", self.instruction_encoder.output_size, model_config.DEPTH_ENCODER.output_size, model_config.RGB_ENCODER.output_size)
 
         if model_config.SEQ2SEQ.use_prev_action:
             rnn_input_size += self.prev_action_embedding.embedding_dim
@@ -86,6 +79,7 @@ class Seq2SeqNet(Net):
             rnn_type=model_config.STATE_ENCODER.rnn_type,
             num_layers=1,
         )
+        print("state encoder:", self.state_encoder)
 
         self.progress_monitor = nn.Linear(
             self.model_config.STATE_ENCODER.hidden_size, 1
