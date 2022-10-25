@@ -128,7 +128,7 @@ class Seq2SeqNet(Net):
                 ((prev_actions.float() + 1) * masks).long().view(-1)
             )
             x = torch.cat([x, prev_actions_embedding], dim=1)
-
+        print("x, states, masks", x.size(), rnn_states.size(), masks.size())
         x, rnn_states_out = self.state_encoder(x, rnn_states, masks)
 
         if self.model_config.PROGRESS_MONITOR.use and AuxLosses.is_active():

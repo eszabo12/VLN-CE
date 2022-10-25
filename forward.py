@@ -66,8 +66,7 @@ def get_observation(locobot):
     observations["depth"] = torchvision.transforms.Resize((256, 256))(
         depth_image[:, 80:-80].permute(0, 3, 1, 2)).permute(0, 2, 3, 1)
     observations["rgb"] = color_image
-    # torch.save(depth_image, './saved_images/depth.pt')
-    # torch.save(color_image, './saved_images/color.pt')
+
     return observations
 
 
@@ -80,11 +79,12 @@ num_actions = 2
 model = Seq2SeqNet(observation_space, model_config, num_actions)
 
 observations = get_observation(locobot)
-
-prev_actions = torch.zeros(1
-) # it doesn't even matter what this is because it doesn't get checked unless check_prev_actions is true
-rnn_states = masks = torch.zeros(128, 512, 256)
-
+    # N = rnn_states.size(1)
+    # T = x.size(0) // N
+prev_actions = torch.zeros(1) # it doesn't even matter what this is because it doesn't get checked unless check_prev_actions is true
+rnn_states = torch.zeros(2, 512, 1) # i made the first dimension one more than x's first dimension to avoid weird sliving
+masks = torch.ones(896, 512)
 # import pdb; pdb.set_trace()
-x, rnn_states_out = model.forward(observations, rnn_states, prev_actions, masks)
-print("forward pass complete")
+print("model output size", model_config.STATE_ENCODER.hidden_size)
+x, rnn_state_out = model.forward(observations, rnn_states, prev_actions, masks)
+print("forward pass complete", x.size(), x.type())
