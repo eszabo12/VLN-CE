@@ -14,6 +14,39 @@ from vlnce_baselines.models.encoders import resnet_encoders
 from vlnce_baselines.models.encoders.instruction_encoder import (
     InstructionEncoder,
 )
+from vlnce_baselines.models.policy import ILPolicy
+
+@BaselineRegistry.register_policy
+class Seq2SeqPolicy(ILPolicy):
+    def __init__(
+        self,
+        observation_space: Space,
+        action_space: Space,
+        model_config: Config,
+    ):
+        super().__init__(
+            Seq2SeqNet(
+                observation_space=observation_space,
+                model_config=model_config,
+                num_actions=action_space.n,
+            ),
+            action_space.n,
+        )
+
+    @classmethod
+    def from_config(
+        cls, config: Config, observation_space: Space, action_space: Space
+    ):
+        config.defrost()
+        config.MODEL.TORCH_GPU_ID = config.TORCH_GPU_ID
+        config.freeze()
+
+        return cls(
+            observation_space=observation_space,
+            action_space=action_space,
+            model_config=config.MODEL,
+        )
+
 
 class Seq2SeqNet(Net):
     """A baseline sequence to sequence network that performs single modality
@@ -128,7 +161,7 @@ class Seq2SeqNet(Net):
                 ((prev_actions.float() + 1) * masks).long().view(-1)
             )
             x = torch.cat([x, prev_actions_embedding], dim=1)
-        print("x, states, masks", x.size(), rnn_states.size(), masks.size())
+        # import pdb; pdb.set_trace()
         x, rnn_states_out = self.state_encoder(x, rnn_states, masks)
 
         if self.model_config.PROGRESS_MONITOR.use and AuxLosses.is_active():

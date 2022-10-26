@@ -678,7 +678,7 @@ class DDPPOWaypointTrainer(PPOTrainer):
         Dict[str, Tensor],
         Dict[str, Tensor],
     ]:
-        # pausing envs with no new episode
+        # pausing envs with no new episod
         if len(envs_to_pause) > 0:
             state_index = list(range(envs.num_envs))
             for idx in reversed(envs_to_pause):
