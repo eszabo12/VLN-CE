@@ -15,7 +15,6 @@ RL:
 
 MODEL:
   policy_name: WaypointPolicy
-
   WAYPOINT:
     min_offset_var: 0.00030625  # stddev of 1 degree
     max_offset_var: 0.06853892  # stddev of (range / 2)

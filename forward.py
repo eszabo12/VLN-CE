@@ -1,5 +1,3 @@
-# sys.path.append('')
-
 from vlnce_baselines.config.default import get_config
 from vlnce_baselines.models.seq2seq_policy import Seq2SeqNet, Seq2SeqPolicy
 from vlnce_baselines.common.aux_losses import AuxLosses
@@ -16,6 +14,8 @@ from gym import spaces
 from importlib import import_module
 import torch
 import torchvision
+import cv2
+
 
 import sys
 import numpy as np
@@ -24,26 +24,28 @@ from interbotix_xs_modules.locobot import InterbotixLocobotCreate3XS
 import pyrealsense2 as rs
 from sensor_msgs.msg import Image
 import einops
-
+import time
+import math
 
 def do_action(action, locobot):
     if action == 0:
+        
         print("stop")
         return None
     elif action == 1:
-        # pass
         locobot.base.move(0.25, 0, 1.0)
     elif action == 2:
-        locobot.base.move(0.25, 30, 1)
+        locobot.base.move(0.25, math.pi / 12.0, 1)
     elif action == 3:
-        locobot.base.move(0.25, 330, 1)
+        locobot.base.move(0.25, math.pi / 12.0, 1)
     elif action == 4:
-        locobot.camera.tilt(0.3)
+        locobot.camera.tilt(0.8)
+        sleep(1)
     elif action == 5:
         locobot.camera.tilt(-0.3)
+        sleep(1)
     locobot.camera.pan_tilt_go_home()
     return get_observation(locobot)
-
 
 
 # with gzip.open('data/datasets/R2R_VLNCE_v1-3/test/test.json.gz','r') as fin:        
@@ -68,8 +70,6 @@ observation = {
 def get_observation(locobot):
     observations = {}
     #instruction tokens
-    # instruction = torch.Tensor([2494, 1968, 2418, 2389, 1336, 766, 1264, 2389, 1404, 1994, 15, 2584, 2288, 1728, 2389, 595, 1613, 2389, 1360, 15, 2494, 1968, 1264, 2389, 1306, 119, 1741, 404, 2389, 1667, 15
-    # ] + [0]*(50-31)).long()
     instruction = torch.Tensor([2494, 1968, 2418, 2389, 1336, 766, 1264, 2389, 1404, 1994, 15, 0, 2288, 1728, 2389, 595, 1613, 2389, 1360, 15, 2494, 1968, 1264, 2389, 1306, 119, 1741, 404, 2389, 1667, 15
     ] + [0]*(50-31)).long() #ADDED pad token where token exceeded vocab size
     # instruction = torch.nn.functional.one_hot(instruction.squeeze(), num_classes=2504)
@@ -80,6 +80,9 @@ def get_observation(locobot):
     observations["instruction"] = instruction
     
     color_image, depth_image = locobot.base.get_img()
+    # cv2.imshow("color", color_image)
+    # cv2.waitkey(0)
+    # cv2.destroyAllWindows()
     color_image = torch.Tensor(einops.repeat(color_image, 'm n l -> k m n l', k=batch_size)).long()
                 # observations: [BATCH, HEIGHT, WIDTH, CHANNEL]
     print("rgb size", color_image.size())
@@ -98,7 +101,6 @@ def get_observation(locobot):
 locobot = InterbotixLocobotCreate3XS(robot_model="locobot_base")
 observation_space = spaces.Dict(observation)
 config = get_config("vlnce_baselines/config/r2r_baselines/seq2seq.yaml")
-#use previous action is false by default
 
 num_actions = 6
 action_space = spaces.Discrete(num_actions)
@@ -117,14 +119,14 @@ masks = torch.ones(896, 512).bool()
 
 policy = Seq2SeqPolicy(observation_space, action_space, config.MODEL)
 rnn_states = torch.zeros(
-    # 14336,
     1, # num envs
     batch_size, #num layers
     config.MODEL.STATE_ENCODER.hidden_size,
 )
+
 print("rnn states shape", rnn_states.shape)
 policy.eval()
-# locobot.camera.pan_tilt_go_home()
+
 locobot.camera.tilt(0.8)
 
 # actions, rnn_states = policy.act(observations, rnn_states, prev_actions, masks)
@@ -142,6 +144,4 @@ while(observation != None and counter < max_actions):
     observation = do_action(actions[0], locobot)
     print("actions:", actions.size(), actions[0])
     counter += 1
-
-#   POSSIBLE_ACTIONS: ["STOP", "MOVE_FORWARD", "TURN_LEFT", "TURN_RIGHT", "LOOK_UP", "LOOK_DOWN"]
-
+locobot.camera.pan_tilt_go_home()
