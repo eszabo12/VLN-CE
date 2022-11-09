@@ -49,6 +49,7 @@ class WaypointPredictionNet(Net):
             backbone=model_config.DEPTH_ENCODER.backbone,
             spatial_output=True,
         )
+        print("depth observation space:", observation_space)
 
         # Init the RGB encoder
         cnn_type = model_config.RGB_ENCODER.cnn_type
@@ -72,6 +73,7 @@ class WaypointPredictionNet(Net):
             rnn_type=model_config.STATE_ENCODER.rnn_type,
             num_layers=1,
         )
+        print("visual rnn:", self.visual_rnn)
 
         self.rgb_pool_linear = nn.Linear(
             self.rgb_encoder.resnet_layer_size,
@@ -167,6 +169,9 @@ class WaypointPredictionNet(Net):
             + model_config.DEPTH_ENCODER.output_size
             + ANGLE_FEATURE_SIZE
         )
+        print("final feature size,", final_feature_size, model_config.RGB_ENCODER.output_size
+            , model_config.DEPTH_ENCODER.output_size
+            , ANGLE_FEATURE_SIZE)
 
         self.stop_linear = nn.Linear(self._hidden_size, 1)
         nn.init.constant_(self.stop_linear.bias, 0)
@@ -314,7 +319,7 @@ class WaypointPredictionNet(Net):
         assert "rgb_history" in observations
         assert "depth_history" in observations
         assert "angle_features" in observations
-
+        print(observations["rgb"].shape[1])
         assert observations["rgb"].shape[1] == self._num_panos
         assert observations["depth"].shape[1] == self._num_panos
 

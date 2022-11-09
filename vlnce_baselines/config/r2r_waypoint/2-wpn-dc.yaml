@@ -21,6 +21,8 @@ RL:
 MODEL:
   policy_name: WaypointPolicy
 
+  num_panos: 256
+
   WAYPOINT:
     continuous_distance: False
 

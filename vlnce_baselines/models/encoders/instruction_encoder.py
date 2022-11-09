@@ -30,11 +30,11 @@ class InstructionEncoder(nn.Module):
             hidden_size=config.hidden_size,
             bidirectional=config.bidirectional,
         )
-
+        self.embeddings = self._load_embeddings()
         if config.sensor_uuid == "instruction":
             if self.config.use_pretrained_embeddings:
                 self.embedding_layer = nn.Embedding.from_pretrained(
-                    embeddings=self._load_embeddings(),
+                    embeddings=self.embeddings,
                     freeze=not self.config.fine_tune_embeddings,
                 )
                 print(self.embedding_layer)
@@ -68,6 +68,18 @@ class InstructionEncoder(nn.Module):
             lengths: [batch_size]
             hidden_state: [batch_size x hidden_size]
         """
+        # import pdb; pdb.set_trace()
+        # print(observations["instruction"].size())
+        instruction = observations["instruction"]
+        i=0
+        for sample in instruction:
+            for j in range(50):
+                word = sample[j]
+                if word > self.config.vocab_size:
+                    instruction[i][j] = self.embeddings[1]
+            i += 1
+        observations["instruction"] = instruction
+        # indices = [i for i, word in enumerate(list(observations["instruction"].squeeze())) if word > self.config.vocab_size]
         if self.config.sensor_uuid == "instruction":
             instruction = observations["instruction"].long()
             lengths = (instruction != 0.0).long().sum(dim=1)
