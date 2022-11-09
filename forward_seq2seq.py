@@ -64,14 +64,17 @@ def do_action(action, locobot, load_image):
 
 seq_length = 50
 vocab_size = 2504
-batch_size= 1 # cuz that's what it says in the yaml
+batch_size= 5 # cuz that's what it says in the yaml
 observation = {
     "instruction" : gym.spaces.Box(low=0, high=100, shape=(vocab_size, seq_length)),
     "depth" : gym.spaces.Box(low=0, high=100, shape=(256, 640, 1)), # [BATCH, HEIGHT, WIDTH, CHANNEL] #480 originally
     "rgb" : gym.spaces.Box(low=0, high=256, shape=(480, 640, 3))#imgs: must have pixel values ranging from 0-255. Assumes a size of [Bx3xHxW]
 # color frame shape (480, 640, 3)
 }
-instruction = torch.Tensor([2494, 780, 2389, 1126, 108, 15] + [0]*(50-6)).long() #ADDED pad token where token exceeded vocab size
+# instruction = torch.Tensor([2494, 780, 2389, 1126, 108, 15] + [0]*(50-6)).long() #ADDED pad token where token exceeded vocab size
+instruction = torch.Tensor([2494, 780, 2389, 1126, 108, 15, 178, 2389, 589, 2494, 1968, 15] + [0]*(seq_length-12)).long() #ADDED pad token where token exceeded vocab size
+#walk down the hallway, at the corner turn right.
+# 178, 2389, 589, 2494, 1968
 print("instruction length", instruction.size())
 instruction = einops.repeat(instruction, 'm -> k m', k=batch_size)
 
@@ -139,21 +142,22 @@ policy.eval()
 
 
 if __name__ == '__main__':
-    observation = do_action(2, locobot, True)
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument('--load_image', action='store_true')
-    # args = parser.parse_args()
-    # load_image = args.load_image
-    # counter = 0
-    # locobot.camera.pan_tilt_go_home()
-    # observation = get_observation(locobot, load_image)
-    # actions, rnn_states = policy.act(observation, rnn_states, prev_actions, masks)
-    # observation = do_action(actions[0], locobot, load_image)
-    # # print("actions:", actions.size(), actions)
-    # max_actions = 20
-    # while(observation != None and counter < max_actions):
-    #     actions, rnn_states = policy.act(observation, rnn_states, prev_actions, masks)
-    #     observation = do_action(actions[0], locobot, load_image)
-    #     # print("actions:", actions.size(), actions[0])
-    #     counter += 1
-    # locobot.camera.pan_tilt_go_home()
+    # locobot.base.move(0.5, 0, 30)
+    # observation = do_action(2, locobot, True)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--load_image', action='store_true')
+    args = parser.parse_args()
+    load_image = args.load_image
+    counter = 0
+    locobot.camera.pan_tilt_go_home()
+    observation = get_observation(locobot, load_image)
+    actions, rnn_states = policy.act(observation, rnn_states, prev_actions, masks)
+    observation = do_action(actions[0], locobot, load_image)
+    # print("actions:", actions.size(), actions)
+    max_actions = 25
+    while(observation != None and counter < max_actions):
+        actions, rnn_states = policy.act(observation, rnn_states, prev_actions, masks)
+        observation = do_action(actions[0], locobot, load_image)
+        # print("actions:", actions.size(), actions[0])
+        counter += 1
+    locobot.camera.pan_tilt_go_home()
