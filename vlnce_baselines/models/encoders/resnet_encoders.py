@@ -60,10 +60,12 @@ class VlnResnetDepthEncoder(nn.Module):
             del ddppo_weights
             self.visual_encoder.load_state_dict(weights_dict, strict=True)
 
-        self.spatial_output = spatial_output
+        # self.spatial_output = spatial_output
+        self.spatial_output = False
 
         if not self.spatial_output:
             self.output_shape = (output_size,)
+            print("output size:,", self.visual_encoder.output_shape)
             self.visual_fc = nn.Sequential(
                 nn.Flatten(),
                 nn.Linear(
@@ -94,6 +96,7 @@ class VlnResnetDepthEncoder(nn.Module):
             x = observations["depth_features"]
         else:
             x = self.visual_encoder(observations)
+        print("x size:", x.size())
 
         if self.spatial_output:
             b, c, h, w = x.size()

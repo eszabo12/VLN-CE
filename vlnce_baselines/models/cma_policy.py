@@ -22,7 +22,7 @@ from vlnce_baselines.models.policy import ILPolicy
 
 
 @baseline_registry.register_policy
-class CMAPolicy(ILPolicy):
+class CMA_Policy(ILPolicy):
     def __init__(
         self,
         observation_space: Space,
@@ -33,9 +33,10 @@ class CMAPolicy(ILPolicy):
             CMANet(
                 observation_space=observation_space,
                 model_config=model_config,
-                num_actions=action_space.n,
+                # num_actions=action_space.n,
+                num_actions=2
             ),
-            action_space.n,
+            2,
         )
 
     @classmethod
@@ -225,14 +226,14 @@ class CMANet(Net):
     ) -> Tuple[Tensor, Tensor]:
         instruction_embedding = self.instruction_encoder(observations)
         depth_embedding = self.depth_encoder(observations)
-        depth_embedding = torch.flatten(depth_embedding, 2)
+        print("depth embedding size", depth_embedding.size())
+        # depth_embedding = torch.flatten(depth_embedding, 2)
 
         rgb_embedding = self.rgb_encoder(observations)
         rgb_embedding = torch.flatten(rgb_embedding, 2)
-
-        prev_actions = self.prev_action_embedding(
-            ((prev_actions.float() + 1) * masks).long().view(-1)
-        )
+        # prev_actions = self.prev_action_embedding(
+        #     ((prev_actions.float() + 1) * masks).long().view(-1)
+        # )
 
         if self.model_config.ablate_instruction:
             instruction_embedding = instruction_embedding * 0
@@ -243,7 +244,7 @@ class CMANet(Net):
 
         rgb_in = self.rgb_linear(rgb_embedding)
         depth_in = self.depth_linear(depth_embedding)
-
+        print("rgb in", rgb_in.size(), depth_in.size(), prev_actions.size())
         state_in = torch.cat([rgb_in, depth_in, prev_actions], dim=1)
         rnn_states_out = rnn_states.detach().clone()
         (
