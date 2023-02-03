@@ -9,8 +9,22 @@ from vlnce_baselines.models.encoders.instruction_encoder import (
 )
 from vlnce_baselines.common.env_utils import construct_envs
 from habitat_baselines.utils.common import CategoricalNet
-from habitat_baselines.common.environments import get_env_class
 
+from habitat_baselines.common.baseline_registry import baseline_registry
+from habitat_baselines.common.environments import get_env_class
+from habitat_baselines.common.obs_transformers import (
+    apply_obs_transforms_batch,
+)
+from habitat_baselines.common.tensorboard_utils import TensorboardWriter
+from habitat_baselines.utils.common import batch_obs
+
+from vlnce_baselines.common.aux_losses import AuxLosses
+from vlnce_baselines.common.utils import extract_instruction_tokens
+from habitat_baselines.common.obs_transformers import (
+    apply_obs_transforms_batch,
+    apply_obs_transforms_obs_space,
+    get_active_obs_transforms,
+)
 import gym
 import gzip
 import json
@@ -80,13 +94,15 @@ observation = {
 # instruction_text = VocabFromText([instruction_text])
 # "Walk down the hallway
 # instruction = torch.Tensor([2584, 780, 2389, 1126, 108, 15] + [0]*(50-6)).long() #ADDED pad token where token exceeded vocab size
-instruction = torch.Tensor([2494, 159, 119, 15]+ [0]*(50-4)).long() #turn around
+# instruction = torch.Tensor([2494, 159, 119, 15]+ [0]*(50-4)).long() #turn around
 print("instruction length", instruction.size())
-instruction = einops.repeat(instruction, 'm -> k m', k=batch_size)
+instruction = "Turn right"
+instruction = extract_instruction_tokens(instruction)
 def get_observation(locobot):
     observations = {}
-    # instruction = torch.Tensor(instruction_tokens + [0]*(50-instruction_tokens.size())).long() #ADDED pad token where token exceeded vocab size
-    # instruction = einops.repeat(instruction, 'm -> k m', k=batch_size)
+
+    instruction = einops.repeat(instruction, 'm -> k m', k=batch_size)
+
     observations["instruction"] = instruction
     color_image, depth_image = locobot.base.get_img()
     color_image = torch.Tensor(einops.repeat(color_image, 'm n l -> k m n l', k=batch_size)).long()
@@ -119,7 +135,39 @@ def get_observation(locobot):
 locobot = InterbotixLocobotCreate3XS(robot_model="locobot_base")
 observation_space = spaces.Dict(observation)
 #distance isn't continuous, but offset is. can try the other config files/actions later
-config = get_config("/home/elle/elle_ws/VLN-CE/vlnce_baselines/config/r2r_baselines/cma_pm_aug.yaml")
+config = get_config("/home/elle/elle_ws/VLN-CE/vlnce_baselines/config/rxr_baselines/rxr_cma_en.yaml")
+policy = CMA_Policy(observation_space, action_space, config.MODEL)
+device = torch.get_device()
+# ---------from dagger trainer file----------
+
+envs = construct_envs(config, get_env_class(config.ENV_NAME))
+expert_uuid = config.IL.DAGGER.expert_policy_sensor_uuid
+
+rnn_states = torch.zeros(
+    envs.num_envs,
+    policy.net.num_recurrent_layers,
+    config.MODEL.STATE_ENCODER.hidden_size,
+    device=device,
+)
+prev_actions = torch.zeros(
+    envs.num_envs,
+    1,
+    device=device,
+    dtype=torch.long,
+)
+not_done_masks = torch.zeros(
+    envs.num_envs, 1, dtype=torch.uint8, device=device
+)
+
+observations = envs.reset()
+observations = extract_instruction_tokens(
+    observations, config.TASK_CONFIG.TASK.INSTRUCTION_SENSOR_UUID
+)
+batch = batch_obs(observations, device)
+batch = apply_obs_transforms_batch(batch, obs_transforms)
+
+
+
 #   POSSIBLE_ACTIONS: ['STOP', 'GO_TOWARD_POINT']
 actions = {}
 actions["r"] = spaces.Box(0.0, 215.0, (1,), np.float64)
@@ -133,7 +181,6 @@ print("observation space:", observation_space)
 observations = get_observation(locobot)
 prev_actions = torch.zeros(batch_size, 512)
 masks = torch.ones(896, 512).bool()
-policy = CMA_Policy(observation_space, action_space, config.MODEL)
 rnn_states = torch.zeros(
     1, # num envs
     batch_size, #num layers
@@ -158,3 +205,5 @@ print("actions:", actions.size(), actions)
 #     print("actions:", actions.size(), actions[0])
 #     counter += 1
 # locobot.camera.pan_tilt_go_home()
+
+#apply_obs_transforms_batch
