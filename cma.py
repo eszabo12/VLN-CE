@@ -34,11 +34,13 @@ import torch
 import torchvision
 import cv2
 import time
+import os
 
 import sys
 import numpy as np
-sys.path.append('/home/elle/interbotix_ws/src/interbotix_ros_toolboxes/interbotix_xs_toolbox/interbotix_xs_modules/src/interbotix_xs_modules/')
-from interbotix_xs_modules.locobot import InterbotixLocobotCreate3XS
+import rospy
+# sys.path.append('/home/elle/interbotix_ws/src/interbotix_ros_toolboxes/interbotix_xs_toolbox/interbotix_xs_modules/src/interbotix_xs_modules/')
+# from interbotix_xs_modules.locobot import InterbotixLocobotCreate3XS
 import pyrealsense2 as rs
 from sensor_msgs.msg import Image
 import einops
@@ -46,6 +48,8 @@ import time
 import math
 
 def do_action(action, locobot):
+    if locobot == None:
+        return
     if action == 0:
         print("stop")
         return None
@@ -95,26 +99,33 @@ observation = {
 # "Walk down the hallway
 # instruction = torch.Tensor([2584, 780, 2389, 1126, 108, 15] + [0]*(50-6)).long() #ADDED pad token where token exceeded vocab size
 # instruction = torch.Tensor([2494, 159, 119, 15]+ [0]*(50-4)).long() #turn around
-print("instruction length", instruction.size())
+# print("instruction length", instruction.size())
 instruction = "Turn right"
-instruction = extract_instruction_tokens(instruction)
+# instruction = extract_instruction_tokens(instruction) #this doesn't work
+instruction = None
 def get_observation(locobot):
     observations = {}
 
     instruction = einops.repeat(instruction, 'm -> k m', k=batch_size)
 
     observations["instruction"] = instruction
-    color_image, depth_image = locobot.base.get_img()
-    color_image = torch.Tensor(einops.repeat(color_image, 'm n l -> k m n l', k=batch_size)).long()
-    print("rgb size", color_image.size())
-    depth_image = torch.Tensor(einops.repeat(depth_image, 'm n l-> k m n l', k=batch_size))/ 255.0
-    observations["depth"] = depth_image[:, 112:-112]
-    print("depth size", observations["depth"].size())
-    observations["rgb"] = color_image
+    color_image, depth_image = None
+    if locobot != None:
+        color_image, depth_image = locobot.base.get_img()
+        color_image = torch.Tensor(einops.repeat(color_image, 'm n l -> k m n l', k=batch_size)).long()
+        print("rgb size", color_image.size())
+        depth_image = torch.Tensor(einops.repeat(depth_image, 'm n l-> k m n l', k=batch_size))/ 255.0
+        observations["depth"] = depth_image[:, 112:-112]
+        print("depth size", observations["depth"].size())
+        observations["rgb"] = color_image
     # torch.save(color_image, "./saved_images/rgb.pt")
     # torch.save(depth_image, "./saved_images/depth.pt")
-    observations["depth"] = torch.load("./saved_images/depth.pt")[:, 112:-112, 192:-192]
-    observations["rgb"] = torch.load("./saved_images/rgb.pt")[:, 112:-112, 192:-192]
+    else:
+        color_image = torch.load("./saved_images/rgb.pt")
+        depth_image = torch.load("./saved_images/depth.pt")
+        observations["depth"] = depth_image[:, 112:-112] / 255.0
+        depth_image = torch.load("./saved_images/depth.pt")[:, :, 192:-192]
+        observations["rgb"] = color_image
     print("depth size", observations["depth"].size())
     print("rgb size", observations["rgb"].size())
 
@@ -123,19 +134,13 @@ def get_observation(locobot):
     observations["angle_features"] = torch.zeros(10)
     return observations
 
-# from VLN-CE/habitat_extensions/config/vlnce_waypoint_task.yaml
-#   RGB_SENSOR:
-#     WIDTH: 224
-#     HEIGHT: 224
-#     HFOV: 90
-#     TYPE: HabitatSimRGBSensor
-#   DEPTH_SENSOR:
-#     WIDTH: 256
-#     HEIGHT: 256
-locobot = InterbotixLocobotCreate3XS(robot_model="locobot_base")
+
+locobot = None
 observation_space = spaces.Dict(observation)
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 #distance isn't continuous, but offset is. can try the other config files/actions later
-config = get_config("/home/elle/elle_ws/VLN-CE/vlnce_baselines/config/rxr_baselines/rxr_cma_en.yaml")
+config = get_config(BASE_DIR + "/VLN-CE/vlnce_baselines/config/rxr_baselines/rxr_cma_en.yaml")
 policy = CMA_Policy(observation_space, action_space, config.MODEL)
 device = torch.get_device()
 # ---------from dagger trainer file----------
