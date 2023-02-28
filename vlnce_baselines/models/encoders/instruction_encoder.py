@@ -32,7 +32,6 @@ class InstructionEncoder(nn.Module):
         )
         if config.sensor_uuid == "instruction":
             self.embeddings = self._load_embeddings()
-
             if self.config.use_pretrained_embeddings:
                 self.embedding_layer = nn.Embedding.from_pretrained(
                     embeddings=self.embeddings,
@@ -90,11 +89,17 @@ class InstructionEncoder(nn.Module):
             instruction = self.embedding_layer(instruction)
         else:
             instruction = observations["rxr_instruction"]
+        import pdb; pdb.set_trace()
+        lengths = torch.count_nonzero(instruction, dim=2)
+        lengths = torch.count_nonzero(lengths, dim=1)
+        # lengths = (instruction != 0.0).long().sum(dim=2)
+        # lengths = (lengths != 0.0).long().sum(dim=1).cpu()
 
-        lengths = list(instruction.size())
         packed_seq = nn.utils.rnn.pack_padded_sequence(
             instruction, lengths, batch_first=True, enforce_sorted=False
         )
+
+        import pdb; pdb.set_trace()
 
         output, final_state = self.encoder_rnn(packed_seq)
 

@@ -144,7 +144,6 @@ sim_config.update(step_config)
 actions = HabitatSimV1ActionSpaceConfiguration(sim_config)
 action_space = spaces.Discrete(6)
 action_config = actions.get()
-# import pdb; pdb.set_trace()
 
 
 policy = CMA_Policy(observation_space, action_space, config.MODEL)
