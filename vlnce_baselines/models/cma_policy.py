@@ -33,8 +33,7 @@ class CMA_Policy(ILPolicy):
             CMANet(
                 observation_space=observation_space,
                 model_config=model_config,
-                # num_actions=action_space.n,
-                num_actions=2
+                num_actions=action_space.n,
             ),
             2,
         )

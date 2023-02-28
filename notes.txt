@@ -1,0 +1,42 @@
+from VLN-CE/habitat_extensions/config/vlnce_waypoint_task.yaml
+  RGB_SENSOR:
+    WIDTH: 224
+    HEIGHT: 224
+    HFOV: 90
+    TYPE: HabitatSimRGBSensor
+  DEPTH_SENSOR:
+    WIDTH: 256
+    HEIGHT: 256
+locobot = InterbotixLocobotCreate3XS(robot_model="locobot_base")
+
+
+data = []
+with gzip.open('data/datasets/R2R_VLNCE_v1-3/test/test.json.gz','r') as fin:    
+    i=0    
+    for line in fin:
+        data.append(line)
+        i +=1
+        if i > 40:
+            break
+# json_str = json.dumps(data) + "\n"               # 2. string (i.e. JSON)
+with open("ex_data.json", 'w') as fout:       # 4. fewer bytes (i.e. gzip)
+    fout.write(data)
+""" "instruction_text": "Turn right through the large doorway into the living room. Walk straight past the couches on the left. Turn right into the kitchen and pause by the oven. ", "instruction_tokens": [2494, 1968, 2418, 2389, 1336, 766, 1264, 2389, 1404, 1994, 15, 2584, 2288, 1728, 2389, 595, 1613, 2389, 1360, 15, 2494, 1968, 1264, 2389, 1306, 119, 1741, 404, 2389, 1667, 15
+]
+"""
+
+instruction_text = "Turn right through the large doorway into the living room. Walk straight past the couches on the left. Turn right into the kitchen and pause by the oven. "
+instruction_text = VocabFromText([instruction_text])
+"Walk down the hallway
+instruction = torch.Tensor([2584, 780, 2389, 1126, 108, 15] + [0]*(50-6)).long() #ADDED pad token where token exceeded vocab size
+instruction = torch.Tensor([2494, 159, 119, 15]+ [0]*(50-4)).long() #turn around
+print("instruction length", instruction.size())
+
+
+actions, rnn_states = policy.act(observations, rnn_states, prev_actions, masks)
+print("actions:", actions.size(), actions)
+  POSSIBLE_ACTIONS: ["STOP", "MOVE_FORWARD", "TURN_LEFT", "TURN_RIGHT", "LOOK_UP", "LOOK_DOWN"]
+30 degrees move left and right, .25 step size, 30 degrees
+
+python3.6 -m pip install
+conda install -c conda-forge 

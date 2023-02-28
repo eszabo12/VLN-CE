@@ -1,4 +1,4 @@
-from vlnce_baselines.dagger_trainer import DaggerTrainer
+# from vlnce_baselines.dagger_trainer import DaggerTrainer
 from vlnce_baselines.config.default import get_config
 from vlnce_baselines.models.waypoint_policy import WaypointPolicy
 from vlnce_baselines.models.cma_policy import CMA_Policy
@@ -38,14 +38,21 @@ import os
 
 import sys
 import numpy as np
-import rospy
+# import rospy
 # sys.path.append('/home/elle/interbotix_ws/src/interbotix_ros_toolboxes/interbotix_xs_toolbox/interbotix_xs_modules/src/interbotix_xs_modules/')
 # from interbotix_xs_modules.locobot import InterbotixLocobotCreate3XS
-import pyrealsense2 as rs
-from sensor_msgs.msg import Image
+# import pyrealsense2 as rs
+# from sensor_msgs.msg import Image
 import einops
 import time
 import math
+from habitat.core.simulator import ActionSpaceConfiguration
+from habitat.sims.habitat_simulator.actions import (
+    HabitatSimActions,
+    HabitatSimV1ActionSpaceConfiguration,
+)
+from embeddings import BERTProcessor
+
 
 def do_action(action, locobot):
     if locobot == None:
@@ -65,24 +72,8 @@ def do_action(action, locobot):
     elif action == 5:
         locobot.camera.tilt(-0.3)
         time.sleep(1)
-    
     return get_observation(locobot)
 
-
-# data = []
-# with gzip.open('data/datasets/R2R_VLNCE_v1-3/test/test.json.gz','r') as fin:    
-#     i=0    
-#     for line in fin:
-#         data.append(line)
-#         i +=1
-#         if i > 40:
-#             break
-# # json_str = json.dumps(data) + "\n"               # 2. string (i.e. JSON)
-# with open("ex_data.json", 'w') as fout:       # 4. fewer bytes (i.e. gzip)
-#     fout.write(data)
-# """ "instruction_text": "Turn right through the large doorway into the living room. Walk straight past the couches on the left. Turn right into the kitchen and pause by the oven. ", "instruction_tokens": [2494, 1968, 2418, 2389, 1336, 766, 1264, 2389, 1404, 1994, 15, 2584, 2288, 1728, 2389, 595, 1613, 2389, 1360, 15, 2494, 1968, 1264, 2389, 1306, 119, 1741, 404, 2389, 1667, 15
-# ]
-# """
 
 seq_length = 50
 vocab_size = 2504
@@ -94,22 +85,19 @@ observation = {
 
 }
 
-# instruction_text = "Turn right through the large doorway into the living room. Walk straight past the couches on the left. Turn right into the kitchen and pause by the oven. "
-# instruction_text = VocabFromText([instruction_text])
-# "Walk down the hallway
-# instruction = torch.Tensor([2584, 780, 2389, 1126, 108, 15] + [0]*(50-6)).long() #ADDED pad token where token exceeded vocab size
-# instruction = torch.Tensor([2494, 159, 119, 15]+ [0]*(50-4)).long() #turn around
-# print("instruction length", instruction.size())
-instruction = "Turn right"
+input_text = "Turn right"
+processor = BERTProcessor()
+feats = processor.get_instruction_embeddings(input_text)
+# observations['rxr_instruction'] = feats
+print("done setting up")
 # instruction = extract_instruction_tokens(instruction) #this doesn't work
-instruction = None
 def get_observation(locobot):
     observations = {}
+    instruction = einops.repeat(feats, 'm a -> k m a', k=batch_size)
 
-    instruction = einops.repeat(instruction, 'm -> k m', k=batch_size)
-
-    observations["instruction"] = instruction
-    color_image, depth_image = None
+    observations["rxr_instruction"] = torch.Tensor(instruction)
+    color_image = None
+    depth_image = None
     if locobot != None:
         color_image, depth_image = locobot.base.get_img()
         color_image = torch.Tensor(einops.repeat(color_image, 'm n l -> k m n l', k=batch_size)).long()
@@ -137,70 +125,58 @@ def get_observation(locobot):
 
 locobot = None
 observation_space = spaces.Dict(observation)
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 #distance isn't continuous, but offset is. can try the other config files/actions later
 config = get_config(BASE_DIR + "/VLN-CE/vlnce_baselines/config/rxr_baselines/rxr_cma_en.yaml")
+
+#add the config.SIMULATOR attributes
+sim_config = get_config(BASE_DIR + "/VLN-CE/habitat_extensions/config/rxr_vlnce_english_task.yaml").SIMULATOR
+# step size config- uses v0
+step_config = get_config(BASE_DIR + "/VLN-CE/habitat_extensions/config/vlnce_task.yaml").SIMULATOR
+print(step_config)
+# /home/elle/Repos/research/VLN-CE/habitat_extensions/config/vlnce_task.yaml
+sim_config.update(step_config)
+
+'''action space '''
+actions = HabitatSimV1ActionSpaceConfiguration(sim_config)
+action_space = spaces.Discrete(6)
+action_config = actions.get()
+# import pdb; pdb.set_trace()
+
+
 policy = CMA_Policy(observation_space, action_space, config.MODEL)
-device = torch.get_device()
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # ---------from dagger trainer file----------
 
-envs = construct_envs(config, get_env_class(config.ENV_NAME))
+# envs = construct_envs(config, get_env_class(config.ENV_NAME))
 expert_uuid = config.IL.DAGGER.expert_policy_sensor_uuid
 
 rnn_states = torch.zeros(
-    envs.num_envs,
+    1,
     policy.net.num_recurrent_layers,
     config.MODEL.STATE_ENCODER.hidden_size,
     device=device,
 )
 prev_actions = torch.zeros(
-    envs.num_envs,
+    1,
     1,
     device=device,
     dtype=torch.long,
 )
 not_done_masks = torch.zeros(
-    envs.num_envs, 1, dtype=torch.uint8, device=device
-)
-
-observations = envs.reset()
-observations = extract_instruction_tokens(
-    observations, config.TASK_CONFIG.TASK.INSTRUCTION_SENSOR_UUID
-)
-batch = batch_obs(observations, device)
-batch = apply_obs_transforms_batch(batch, obs_transforms)
-
-
-
-#   POSSIBLE_ACTIONS: ['STOP', 'GO_TOWARD_POINT']
-actions = {}
-actions["r"] = spaces.Box(0.0, 215.0, (1,), np.float64)
-actions["theta"] = spaces.Box(0.0, math.pi*2, (1,), np.float64)
-first_space = spaces.Dict(actions)
-stop_space = spaces.Box(0, 0)
-full_dict = {"STOP:": stop_space, "GO_TOWARD_POINT":first_space}
-action_space = spaces.Dict(full_dict)
-print("observation space:", observation_space)
-
-observations = get_observation(locobot)
-prev_actions = torch.zeros(batch_size, 512)
-masks = torch.ones(896, 512).bool()
-rnn_states = torch.zeros(
-    1, # num envs
-    batch_size, #num layers
-    config.MODEL.STATE_ENCODER.hidden_size,
+    1, 1, dtype=torch.uint8, device=device
 )
 
 print("rnn states shape", rnn_states.shape)
 
-# actions, rnn_states = policy.act(observations, rnn_states, prev_actions, masks)
-# print("actions:", actions.size(), actions)
-#   POSSIBLE_ACTIONS: ["STOP", "MOVE_FORWARD", "TURN_LEFT", "TURN_RIGHT", "LOOK_UP", "LOOK_DOWN"]
-# 30 degrees move left and right, .25 step size, 30 degrees
+
 counter = 0
 observation = get_observation(locobot)
-value, actions, action_elements, modes, variances, action_log_probs, rnn_states_out, pano_stop_distribution = policy.act(observation, rnn_states, prev_actions, masks)
+print(config.INFERENCE.CKPT_PATH)
+value, actions, action_elements, modes, variances, action_log_probs, rnn_states_out, pano_stop_distribution = policy.act(observation, rnn_states, prev_actions, not_done_masks)
 # observation = do_action(actions[0], locobot)
 print("actions:", actions.size(), actions)
 # max_actions = 10

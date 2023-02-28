@@ -86,7 +86,9 @@ class RecollectTrainer(BaseVLNCETrainer):
                 num_workers=1,
             )
         )
-
+        import pdb; pdb.set_trace()
+        print("obs space", dataset.observation_space)
+        print("action_space", dataset.action_space)
         self._initialize_policy(
             self.config,
             self.config.IL.load_from_ckpt,

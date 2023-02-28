@@ -113,7 +113,7 @@ observation_space = spaces.Dict(observation)
 config = get_config("/home/elle/elle_ws/VLN-CE/vlnce_baselines/config/r2r_waypoint/2-wpn-dc.yaml")
 # waypoint_config = config.MODEL.WAYPOINT
 # print("distance space,", waypoint_config.max_distance_prediction, waypoint_config.min_distance_prediction)
-print(config)
+# print(config)
 # envs = construct_envs(config, get_env_class(config.ENV_NAME))
 #   POSSIBLE_ACTIONS: ['STOP', 'GO_TOWARD_POINT']
 actions = {}

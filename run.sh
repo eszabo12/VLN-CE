@@ -1,3 +1,5 @@
-python run.py \
-  --exp-config vlnce_baselines/config/r2r_baselines/cma_da_aug_tune.yaml \
-  --run-type eval
+# python run.py \
+#   --exp-config vlnce_baselines/config/rxr_baselines/rxr_cma_en.yaml \
+#   --run-type train
+# conda activate vln
+python3.6 cma.py

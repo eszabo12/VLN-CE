@@ -30,8 +30,9 @@ class InstructionEncoder(nn.Module):
             hidden_size=config.hidden_size,
             bidirectional=config.bidirectional,
         )
-        self.embeddings = self._load_embeddings()
         if config.sensor_uuid == "instruction":
+            self.embeddings = self._load_embeddings()
+
             if self.config.use_pretrained_embeddings:
                 self.embedding_layer = nn.Embedding.from_pretrained(
                     embeddings=self.embeddings,
@@ -70,25 +71,27 @@ class InstructionEncoder(nn.Module):
         """
         # import pdb; pdb.set_trace()
         # print(observations["instruction"].size())
-        instruction = observations["instruction"]
-        i=0
-        for sample in instruction:
-            for j in range(50):
-                word = sample[j]
-                if word > self.config.vocab_size:
-                    instruction[i][j] = self.embeddings[1]
-            i += 1
-        observations["instruction"] = instruction
+        
         # indices = [i for i, word in enumerate(list(observations["instruction"].squeeze())) if word > self.config.vocab_size]
         if self.config.sensor_uuid == "instruction":
+            instruction = observations["instruction"]
+            #this was out of the if block
+            i=0
+            for sample in instruction:
+                for j in range(50):
+                    word = sample[j]
+                    if word > self.config.vocab_size:
+                        instruction[i][j] = self.embeddings[1]
+                i += 1
+            observations["instruction"] = instruction
+            #end
             instruction = observations["instruction"].long()
             lengths = (instruction != 0.0).long().sum(dim=1)
             instruction = self.embedding_layer(instruction)
         else:
             instruction = observations["rxr_instruction"]
 
-        lengths = (instruction != 0.0).long().sum(dim=2)
-        lengths = (lengths != 0.0).long().sum(dim=1)
+        lengths = list(instruction.size())
         packed_seq = nn.utils.rnn.pack_padded_sequence(
             instruction, lengths, batch_first=True, enforce_sorted=False
         )
