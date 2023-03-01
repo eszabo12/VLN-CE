@@ -224,6 +224,7 @@ class CMANet(Net):
         masks: Tensor,
     ) -> Tuple[Tensor, Tensor]:
         instruction_embedding = self.instruction_encoder(observations)
+        import pdb; pdb.set_trace()
         depth_embedding = self.depth_encoder(observations)
         print("depth embedding size", depth_embedding.size())
         # depth_embedding = torch.flatten(depth_embedding, 2)
@@ -243,7 +244,13 @@ class CMANet(Net):
 
         rgb_in = self.rgb_linear(rgb_embedding)
         depth_in = self.depth_linear(depth_embedding)
+        import einops
+        # I did this to make the whole concat 800 dim
+        prev_actions = einops.repeat(prev_actions, 'a b -> 5 32 a b').long()
+        prev_actions = torch.squeeze(prev_actions, dim=3)
+        prev_actions = torch.squeeze(prev_actions, dim=2)
         print("rgb in", rgb_in.size(), depth_in.size(), prev_actions.size())
+
         state_in = torch.cat([rgb_in, depth_in, prev_actions], dim=1)
         rnn_states_out = rnn_states.detach().clone()
         (
@@ -265,6 +272,7 @@ class CMANet(Net):
         rgb_k, rgb_v = torch.split(
             self.rgb_kv(rgb_embedding), self._hidden_size // 2, dim=1
         )
+        import pdb; pdb.set_trace()
         depth_k, depth_v = torch.split(
             self.depth_kv(depth_embedding), self._hidden_size // 2, dim=1
         )
@@ -305,5 +313,5 @@ class CMANet(Net):
                 progress_loss,
                 self.model_config.PROGRESS_MONITOR.alpha,
             )
-
+        print("forward pass complete")
         return x, rnn_states_out

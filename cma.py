@@ -111,15 +111,16 @@ def get_observation(locobot):
     else:
         color_image = torch.load("./saved_images/rgb.pt")
         depth_image = torch.load("./saved_images/depth.pt")
-        observations["depth"] = depth_image[:, 112:-112] / 255.0
-        depth_image = torch.load("./saved_images/depth.pt")[:, :, 192:-192]
+        depth_image = depth_image[:, 128:-128, 192:416] / 255.0
+        color_image = color_image[:, 96:352, 128:384]
+        print(color_image.size())
+        observations["depth"] = depth_image
         observations["rgb"] = color_image
     print("depth size", observations["depth"].size())
     print("rgb size", observations["rgb"].size())
-
-    observations["rgb_history"] = color_image
-    observations["depth_history"] = depth_image
-    observations["angle_features"] = torch.zeros(10)
+    # observations["rgb_history"] = color_image
+    # observations["depth_history"] = depth_image
+    # observations["angle_features"] = torch.zeros(10)
     return observations
 
 
@@ -131,7 +132,7 @@ observation_space = spaces.Dict(observation)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 #distance isn't continuous, but offset is. can try the other config files/actions later
 config = get_config(BASE_DIR + "/VLN-CE/vlnce_baselines/config/rxr_baselines/rxr_cma_en.yaml")
-
+print(config.MODEL)
 #add the config.SIMULATOR attributes
 sim_config = get_config(BASE_DIR + "/VLN-CE/habitat_extensions/config/rxr_vlnce_english_task.yaml").SIMULATOR
 # step size config- uses v0
@@ -139,7 +140,6 @@ step_config = get_config(BASE_DIR + "/VLN-CE/habitat_extensions/config/vlnce_tas
 print(step_config)
 # /home/elle/Repos/research/VLN-CE/habitat_extensions/config/vlnce_task.yaml
 sim_config.update(step_config)
-
 '''action space '''
 actions = HabitatSimV1ActionSpaceConfiguration(sim_config)
 action_space = spaces.Discrete(6)
@@ -154,7 +154,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 expert_uuid = config.IL.DAGGER.expert_policy_sensor_uuid
 
 rnn_states = torch.zeros(
-    1,
+    batch_size,
     policy.net.num_recurrent_layers,
     config.MODEL.STATE_ENCODER.hidden_size,
     device=device,
