@@ -1,3 +1,5 @@
+ssh elle@elle-NUC10i3FNK
+
 from VLN-CE/habitat_extensions/config/vlnce_waypoint_task.yaml
   RGB_SENSOR:
     WIDTH: 224
