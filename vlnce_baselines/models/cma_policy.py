@@ -231,9 +231,9 @@ class CMANet(Net):
 
         rgb_embedding = self.rgb_encoder(observations)
         rgb_embedding = torch.flatten(rgb_embedding, 2)
-        # prev_actions = self.prev_action_embedding(
-        #     ((prev_actions.float() + 1) * masks).long().view(-1)
-        # )
+        prev_actions = self.prev_action_embedding(
+            ((prev_actions.float() + 1) * masks).long().view(-1)
+        )
 
         if self.model_config.ablate_instruction:
             instruction_embedding = instruction_embedding * 0
@@ -244,13 +244,15 @@ class CMANet(Net):
 
         rgb_in = self.rgb_linear(rgb_embedding)
         depth_in = self.depth_linear(depth_embedding)
-        import einops
         # I did this to make the whole concat 800 dim
-        prev_actions = einops.repeat(prev_actions, 'a b -> 5 32 a b').long()
-        prev_actions = torch.squeeze(prev_actions, dim=3)
-        prev_actions = torch.squeeze(prev_actions, dim=2)
-        print("rgb in", rgb_in.size(), depth_in.size(), prev_actions.size())
+        import einops
 
+        prev_actions = einops.repeat(prev_actions, 'a b -> 5 a b').long()
+        # prev_actions = einops.repeat(prev_actions, 'a b -> 5 32 a b').long()
+        # prev_actions = torch.squeeze(prev_actions, dim=3)
+        prev_actions = torch.squeeze(prev_actions, dim=1)
+        print("rgb in", rgb_in.size(), depth_in.size(), prev_actions.size())
+        import pdb; pdb.set_trace()
         state_in = torch.cat([rgb_in, depth_in, prev_actions], dim=1)
         rnn_states_out = rnn_states.detach().clone()
         (

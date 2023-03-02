@@ -51,7 +51,7 @@ from habitat.sims.habitat_simulator.actions import (
     HabitatSimActions,
     HabitatSimV1ActionSpaceConfiguration,
 )
-from embeddings import BERTProcessor
+# from embeddings import BERTProcessor
 
 locobot = InterbotixLocobotCreate3XS(robot_model="locobot_base")
 
