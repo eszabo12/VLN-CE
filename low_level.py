@@ -39,8 +39,8 @@ import os
 import sys
 import numpy as np
 # import rospy
-# sys.path.append('/home/elle/interbotix_ws/src/interbotix_ros_toolboxes/interbotix_xs_toolbox/interbotix_xs_modules/src/interbotix_xs_modules/')
-# from interbotix_xs_modules.locobot import InterbotixLocobotCreate3XS
+sys.path.append('/home/elle/interbotix_ws/src/interbotix_ros_toolboxes/interbotix_xs_toolbox/interbotix_xs_modules/src/interbotix_xs_modules/')
+from interbotix_xs_modules.locobot import InterbotixLocobotCreate3XS
 # import pyrealsense2 as rs
 # from sensor_msgs.msg import Image
 import einops
