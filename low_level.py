@@ -55,7 +55,7 @@ from habitat.sims.habitat_simulator.actions import (
 
 locobot = InterbotixLocobotCreate3XS(robot_model="locobot_base")
 
-def do_action(action, locobot):
+def do_action(action):
     if locobot == None:
         return
     if action == 0:
@@ -81,4 +81,4 @@ while(action != 0):
     if not action in range(6):
         print("Action not in range. Try again")
         continue
-    do_action(action, locobot)
+    do_action(action)
