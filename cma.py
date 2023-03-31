@@ -21,6 +21,7 @@ from habitat_baselines.utils.common import batch_obs
 from vlnce_baselines.common.aux_losses import AuxLosses
 from vlnce_baselines.common.utils import extract_instruction_tokens
 from habitat_baselines.common.obs_transformers import (
+    CenterCropper,
     apply_obs_transforms_batch,
     apply_obs_transforms_obs_space,
     get_active_obs_transforms,
@@ -77,7 +78,7 @@ def do_action(action, locobot):
 
 seq_length = 50
 vocab_size = 2504
-batch_size= 5
+batch_size= 1
 observation = {
     "instruction" : gym.spaces.Box(low=0, high=100, shape=(vocab_size, seq_length)),
     "depth" : gym.spaces.Box(low=0, high=1, shape=(256, 256, 1)), # [BATCH, HEIGHT, WIDTH, CHANNEL] #480 originally 
@@ -85,10 +86,11 @@ observation = {
 
 }
 
-input_text = "Turn right"
+input_text = "Turn right anywhere"
 processor = BERTProcessor()
 feats = processor.get_instruction_embeddings(input_text)
-# observations['rxr_instruction'] = feats
+image_crop = CenterCropper(256, tuple(("rgb")))
+depth_crop = CenterCropper(224, tuple(("depth")))
 print("done setting up")
 # instruction = extract_instruction_tokens(instruction) #this doesn't work
 def get_observation(locobot):
@@ -111,11 +113,17 @@ def get_observation(locobot):
     else:
         color_image = torch.load("./saved_images/rgb.pt")
         depth_image = torch.load("./saved_images/depth.pt")
-        depth_image = depth_image[:, 128:-128, 192:416] / 255.0
-        color_image = color_image[:, 96:352, 128:384]
+        # observations = image_crop.transform_observation_space(observations)
+        # observations = depth_crop.transform_observation_space(observations)
+        print(depth_image.size())
         print(color_image.size())
-        observations["depth"] = depth_image
-        observations["rgb"] = color_image
+        depth_image = depth_image[0, 112:368,192:448] / 255.0
+        color_image = color_image[0,128:352, 208:432]
+        print(color_image.size())
+        observations["depth"] = depth_image.unsqueeze(0)
+        observations["rgb"] = color_image.unsqueeze(0)
+    # torch.save(color_image, "./saved_images/rgb.pt")
+    # torch.save(depth_image, "./saved_images/depth.pt")
     print("depth size", observations["depth"].size())
     print("rgb size", observations["rgb"].size())
     # observations["rgb_history"] = color_image
@@ -132,29 +140,27 @@ observation_space = spaces.Dict(observation)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 #distance isn't continuous, but offset is. can try the other config files/actions later
 config = get_config(BASE_DIR + "/VLN-CE/vlnce_baselines/config/rxr_baselines/rxr_cma_en.yaml")
-print(config.MODEL)
+# print(config.MODEL)
 #add the config.SIMULATOR attributes
 sim_config = get_config(BASE_DIR + "/VLN-CE/habitat_extensions/config/rxr_vlnce_english_task.yaml").SIMULATOR
 # step size config- uses v0
 step_config = get_config(BASE_DIR + "/VLN-CE/habitat_extensions/config/vlnce_task.yaml").SIMULATOR
-print(step_config)
-# /home/elle/Repos/research/VLN-CE/habitat_extensions/config/vlnce_task.yaml
+# print(step_config)
 sim_config.update(step_config)
 '''action space '''
 actions = HabitatSimV1ActionSpaceConfiguration(sim_config)
 action_space = spaces.Discrete(6)
 action_config = actions.get()
-
+print(config.MODEL.DEPTH_ENCODER)
 
 policy = CMA_Policy(observation_space, action_space, config.MODEL)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # ---------from dagger trainer file----------
 
-# envs = construct_envs(config, get_env_class(config.ENV_NAME))
 expert_uuid = config.IL.DAGGER.expert_policy_sensor_uuid
 
 rnn_states = torch.zeros(
-    batch_size,
+    1, #verify num_envs is 1 in the sim
     policy.net.num_recurrent_layers,
     config.MODEL.STATE_ENCODER.hidden_size,
     device=device,
@@ -171,19 +177,14 @@ not_done_masks = torch.zeros(
 
 print("rnn states shape", rnn_states.shape)
 
-
 counter = 0
 observation = get_observation(locobot)
-print(config.INFERENCE.CKPT_PATH)
-value, actions, action_elements, modes, variances, action_log_probs, rnn_states_out, pano_stop_distribution = policy.act(observation, rnn_states, prev_actions, not_done_masks)
-# observation = do_action(actions[0], locobot)
-print("actions:", actions.size(), actions)
-# max_actions = 10
+actions, rnn_states = policy.act(observation, rnn_states, prev_actions, not_done_masks)
+print("actions:", actions)
+max_actions = 10
 # while(observation != None and counter < max_actions):
-#     actions, rnn_states = policy.act(observation, rnn_states, prev_actions, masks)
-#     observation = do_action(actions[0], locobot)
-#     print("actions:", actions.size(), actions[0])
+#     actions, rnn_states = policy.act(observation, rnn_states, prev_actions, not_done_masks)
+#     print("actions:", actions[0])
 #     counter += 1
+#     prev_actions = actions.unsqueeze(0)
 # locobot.camera.pan_tilt_go_home()
-
-#apply_obs_transforms_batch

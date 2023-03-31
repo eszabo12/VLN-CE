@@ -142,7 +142,6 @@ class CMANet(Net):
             hidden_size // 2 + model_config.RGB_ENCODER.output_size,
             1,
         )
-
         self.depth_kv = nn.Conv1d(
             self.depth_encoder.output_shape[0],
             hidden_size // 2 + model_config.DEPTH_ENCODER.output_size,
@@ -224,10 +223,9 @@ class CMANet(Net):
         masks: Tensor,
     ) -> Tuple[Tensor, Tensor]:
         instruction_embedding = self.instruction_encoder(observations)
-        import pdb; pdb.set_trace()
         depth_embedding = self.depth_encoder(observations)
         print("depth embedding size", depth_embedding.size())
-        # depth_embedding = torch.flatten(depth_embedding, 2)
+        depth_embedding = torch.flatten(depth_embedding, 2)
 
         rgb_embedding = self.rgb_encoder(observations)
         rgb_embedding = torch.flatten(rgb_embedding, 2)
@@ -247,19 +245,18 @@ class CMANet(Net):
         # I did this to make the whole concat 800 dim
         import einops
 
-        prev_actions = einops.repeat(prev_actions, 'a b -> 5 a b').long()
-        # prev_actions = einops.repeat(prev_actions, 'a b -> 5 32 a b').long()
-        # prev_actions = torch.squeeze(prev_actions, dim=3)
-        prev_actions = torch.squeeze(prev_actions, dim=1)
-        print("rgb in", rgb_in.size(), depth_in.size(), prev_actions.size())
-        import pdb; pdb.set_trace()
+        # prev_actions = einops.repeat(prev_actions, 'a b -> 5 a b').long()
+        # # prev_actions = einops.repeat(prev_actions, 'a b -> 5 32 a b').long()
+        # # prev_actions = torch.squeeze(prev_actions, dim=3)
+        # prev_actions = torch.squeeze(prev_actions, dim=1)
         state_in = torch.cat([rgb_in, depth_in, prev_actions], dim=1)
+        # import pdb; pdb.set_trace()
         rnn_states_out = rnn_states.detach().clone()
         (
             state,
             rnn_states_out[:, 0 : self.state_encoder.num_recurrent_layers],
         ) = self.state_encoder(
-            state_in,
+            state_in[0].unsqueeze(0),
             rnn_states[:, 0 : self.state_encoder.num_recurrent_layers],
             masks,
         )
@@ -274,7 +271,7 @@ class CMANet(Net):
         rgb_k, rgb_v = torch.split(
             self.rgb_kv(rgb_embedding), self._hidden_size // 2, dim=1
         )
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         depth_k, depth_v = torch.split(
             self.depth_kv(depth_embedding), self._hidden_size // 2, dim=1
         )
@@ -315,5 +312,4 @@ class CMANet(Net):
                 progress_loss,
                 self.model_config.PROGRESS_MONITOR.alpha,
             )
-        print("forward pass complete")
         return x, rnn_states_out

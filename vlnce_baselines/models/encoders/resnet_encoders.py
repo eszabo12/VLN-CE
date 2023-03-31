@@ -60,8 +60,8 @@ class VlnResnetDepthEncoder(nn.Module):
             del ddppo_weights
             self.visual_encoder.load_state_dict(weights_dict, strict=True)
 
-        # self.spatial_output = spatial_output
-        self.spatial_output = False
+        self.spatial_output = spatial_output
+        # self.spatial_output = True
 
         if not self.spatial_output:
             self.output_shape = (output_size,)
@@ -203,7 +203,6 @@ class TorchVisionResNet(nn.Module):
             resnet_output = self.cnn(normalize(rgb_observations))
 
         if self.spatial_output:
-            print("spatial output")
             b, c, h, w = resnet_output.size()
 
             spatial_features = (

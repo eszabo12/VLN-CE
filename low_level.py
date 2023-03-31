@@ -63,10 +63,13 @@ def do_action(action):
         return None
     elif action == 1:
         locobot.base.move(0.25, 0, 1.0)
+        # time.sleep(1)
     elif action == 2:
         locobot.base.move(0.25, math.pi / 12.0, 1)
+        time.sleep(1)
     elif action == 3:
         locobot.base.move(0.25, -math.pi / 12.0, 1)
+        time.sleep(1)
     elif action == 4:
         locobot.camera.tilt(0.8)
         time.sleep(1)
@@ -76,7 +79,7 @@ def do_action(action):
 
 action = -1
 while(action != 0):
-    print("\noptions: \n0: End sequence \n1: Go forward \n2: Turn Left \n3: Turn right \n4: Look up \n5: Look Down")
+    print("\noptions: \n0: End sequence \n1: Go forward \n2: Turn Left \n3: Turn right \n4: Look down \n5: Look up")
     action = int(input())
     if not action in range(6):
         print("Action not in range. Try again")

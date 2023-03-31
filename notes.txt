@@ -42,3 +42,4 @@ print("actions:", actions.size(), actions)
 
 python3.6 -m pip install
 conda install -c conda-forge 
+python3.10 -m pip install

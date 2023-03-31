@@ -13,7 +13,7 @@ INFERENCE:
   LANGUAGES: [en-US, en-IN]
   SAMPLE: True
   USE_CKPT_CONFIG: False
-  CKPT_PATH: data/checkpoints/ckpt.0.pth  # uses bert embeddings
+  CKPT_PATH: data/checkpoints/ckpt.6.pth  # uses bert embeddings
 
   PREDICTIONS_FILE: rxr_cma_en_test_challenge.json
   FORMAT: rxr
