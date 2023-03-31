@@ -38,11 +38,11 @@ import os
 
 import sys
 import numpy as np
-# import rospy
-# sys.path.append('/home/elle/interbotix_ws/src/interbotix_ros_toolboxes/interbotix_xs_toolbox/interbotix_xs_modules/src/interbotix_xs_modules/')
-# from interbotix_xs_modules.locobot import InterbotixLocobotCreate3XS
-# import pyrealsense2 as rs
-# from sensor_msgs.msg import Image
+import rospy
+sys.path.append('/home/elle/interbotix_ws/src/interbotix_ros_toolboxes/interbotix_xs_toolbox/interbotix_xs_modules/src/interbotix_xs_modules/')
+from interbotix_xs_modules.locobot import InterbotixLocobotCreate3XS
+import pyrealsense2 as rs
+from sensor_msgs.msg import Image
 import einops
 import time
 import math
@@ -52,6 +52,9 @@ from habitat.sims.habitat_simulator.actions import (
     HabitatSimV1ActionSpaceConfiguration,
 )
 from embeddings import BERTProcessor
+
+
+locobot = InterbotixLocobotCreate3XS(robot_model="locobot_base")
 
 
 def do_action(action, locobot):
@@ -82,15 +85,13 @@ observation = {
     "instruction" : gym.spaces.Box(low=0, high=100, shape=(vocab_size, seq_length)),
     "depth" : gym.spaces.Box(low=0, high=1, shape=(256, 256, 1)), # [BATCH, HEIGHT, WIDTH, CHANNEL] #480 originally 
     "rgb" : gym.spaces.Box(low=0, high=256, shape=(256, 256, 3))#imgs: must have pixel values ranging from 0-255. Assumes a size of [Bx3xHxW] # color frame shape og (480, 640, 3)
-
 }
 
-input_text = "Turn right"
+input_text = "Go down the hallway, turning left at the end, then turn back around and go back down the same hallway. stop when you reach the couches."
 processor = BERTProcessor()
 feats = processor.get_instruction_embeddings(input_text)
-# observations['rxr_instruction'] = feats
+
 print("done setting up")
-# instruction = extract_instruction_tokens(instruction) #this doesn't work
 def get_observation(locobot):
     observations = {}
     instruction = einops.repeat(feats, 'm a -> k m a', k=batch_size)
@@ -124,7 +125,6 @@ def get_observation(locobot):
     return observations
 
 
-locobot = None
 observation_space = spaces.Dict(observation)
 
 
@@ -186,4 +186,4 @@ print("actions:", actions.size(), actions)
 #     counter += 1
 # locobot.camera.pan_tilt_go_home()
 
-#apply_obs_transforms_batch
+# apply_obs_transforms_batch
