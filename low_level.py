@@ -72,16 +72,36 @@ def do_action(action):
         time.sleep(1)
     elif action == 4:
         locobot.camera.tilt(0.8)
-        time.sleep(1)
+        # time.sleep(1)
     elif action == 5:
         locobot.camera.tilt(-0.3)
-        time.sleep(1)
+        # time.sleep(1)
+def square():
+    print('in square')
+    locobot.base.move(0.25, 0, 2.0)
+    time.sleep(0.5)
+    locobot.base.move(0.25, -math.pi/2, 1)
+    time.sleep(0.5)
+    locobot.base.move(0.25, 0, 2.0)
+    time.sleep(0.5)
+    locobot.base.move(0.25, -math.pi/2, 1)
+    time.sleep(0.5)
+    locobot.base.move(0.25, 0, 2.0)
+    time.sleep(0.5)
+    locobot.base.move(0.25, -math.pi/2, 1)
+    time.sleep(0.5)
+    locobot.base.move(0.25, 0, 2.0)
+    time.sleep(0.5)
+    locobot.base.move(0.25, -math.pi/2, 1)
+    time.sleep(0.5)
+    print('done')
 
-action = -1
-while(action != 0):
-    print("\noptions: \n0: End sequence \n1: Go forward \n2: Turn Left \n3: Turn right \n4: Look down \n5: Look up")
-    action = int(input())
-    if not action in range(6):
-        print("Action not in range. Try again")
-        continue
-    do_action(action)
+square()
+# action = -1
+# while(action != 0):
+#     print("\noptions: \n0: End sequence \n1: Go forward \n2: Turn Left \n3: Turn right \n4: Look down \n5: Look up")
+#     action = int(input())
+#     if not action in range(6):
+#         print("Action not in range. Try again")
+#         continue
+#     do_action(action)

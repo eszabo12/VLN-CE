@@ -35,7 +35,7 @@ class CMA_Policy(ILPolicy):
                 model_config=model_config,
                 num_actions=action_space.n,
             ),
-            2,
+            action_space.n,
         )
 
     @classmethod

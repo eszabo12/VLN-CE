@@ -39,11 +39,11 @@ import os
 
 import sys
 import numpy as np
-# import rospy
-# sys.path.append('/home/elle/interbotix_ws/src/interbotix_ros_toolboxes/interbotix_xs_toolbox/interbotix_xs_modules/src/interbotix_xs_modules/')
-# from interbotix_xs_modules.locobot import InterbotixLocobotCreate3XS
-# import pyrealsense2 as rs
-# from sensor_msgs.msg import Image
+import rospy
+sys.path.append('/home/elle/interbotix_ws/src/interbotix_ros_toolboxes/interbotix_xs_toolbox/interbotix_xs_modules/src/interbotix_xs_modules/')
+from interbotix_xs_modules.locobot import InterbotixLocobotCreate3XS
+import pyrealsense2 as rs
+from sensor_msgs.msg import Image
 import einops
 import time
 import math
@@ -53,28 +53,26 @@ from habitat.sims.habitat_simulator.actions import (
     HabitatSimV1ActionSpaceConfiguration,
 )
 from embeddings import BERTProcessor
-
+# import matplotlib as plt
 
 def do_action(action, locobot):
     if locobot == None:
         return
     if action == 0:
         print("stop")
-        return None
     elif action == 1:
         locobot.base.move(0.25, 0, 1.0)
     elif action == 2:
-        locobot.base.move(0.25, math.pi / 12.0, 1)
+        locobot.base.move(0.25, -math.pi / 6.0, 1)
     elif action == 3:
-        locobot.base.move(0.25, math.pi / 12.0, 1)
+        locobot.base.move(0.25, math.pi / 6.0, 1)
     elif action == 4:
         locobot.camera.tilt(0.8)
         time.sleep(1)
     elif action == 5:
         locobot.camera.tilt(-0.3)
-        time.sleep(1)
+    time.sleep(1)
     return get_observation(locobot)
-
 
 seq_length = 50
 vocab_size = 2504
@@ -86,7 +84,8 @@ observation = {
 
 }
 
-input_text = "Turn right anywhere"
+#input_text = "Go forward and then stop."
+input_text = "go down the middle of the hallway. At the chairs and the table, turn right. Go into the crevice in between the two couches and face the window. Then turn around and walk towards the elevator. Face the elevator. At the elevator doors, turn left down the hallway. Once you see a wall, turn left. Stop when you see the black wheeled desk chair at the end of the hallway."
 processor = BERTProcessor()
 feats = processor.get_instruction_embeddings(input_text)
 image_crop = CenterCropper(256, tuple(("rgb")))
@@ -102,12 +101,15 @@ def get_observation(locobot):
     depth_image = None
     if locobot != None:
         color_image, depth_image = locobot.base.get_img()
-        color_image = torch.Tensor(einops.repeat(color_image, 'm n l -> k m n l', k=batch_size)).long()
-        print("rgb size", color_image.size())
-        depth_image = torch.Tensor(einops.repeat(depth_image, 'm n l-> k m n l', k=batch_size))/ 255.0
-        observations["depth"] = depth_image[:, 112:-112]
-        print("depth size", observations["depth"].size())
-        observations["rgb"] = color_image
+        print("color, depth size", color_image.shape, depth_image.shape)
+
+        depth_image = depth_image[112:368,192:448, :] / 255.0
+        color_image = color_image[128:352, 208:432, :]
+        color_image = torch.Tensor(color_image)
+        depth_image = torch.Tensor(depth_image)
+        observations["depth"] = depth_image.unsqueeze(0)
+        observations["rgb"] = color_image.unsqueeze(0)
+
     # torch.save(color_image, "./saved_images/rgb.pt")
     # torch.save(depth_image, "./saved_images/depth.pt")
     else:
@@ -119,7 +121,6 @@ def get_observation(locobot):
         print(color_image.size())
         depth_image = depth_image[0, 112:368,192:448] / 255.0
         color_image = color_image[0,128:352, 208:432]
-        print(color_image.size())
         observations["depth"] = depth_image.unsqueeze(0)
         observations["rgb"] = color_image.unsqueeze(0)
     # torch.save(color_image, "./saved_images/rgb.pt")
@@ -132,7 +133,9 @@ def get_observation(locobot):
     return observations
 
 
-locobot = None
+# locobot = None
+locobot = InterbotixLocobotCreate3XS(robot_model="locobot_base")
+
 observation_space = spaces.Dict(observation)
 
 
@@ -181,10 +184,11 @@ counter = 0
 observation = get_observation(locobot)
 actions, rnn_states = policy.act(observation, rnn_states, prev_actions, not_done_masks)
 print("actions:", actions)
-max_actions = 10
-# while(observation != None and counter < max_actions):
-#     actions, rnn_states = policy.act(observation, rnn_states, prev_actions, not_done_masks)
-#     print("actions:", actions[0])
-#     counter += 1
-#     prev_actions = actions.unsqueeze(0)
-# locobot.camera.pan_tilt_go_home()
+max_actions = 10000
+while(counter < max_actions):
+    actions, rnn_states = policy.act(observation, rnn_states, prev_actions, not_done_masks)
+    print("actions:", actions[0])
+    counter += 1
+    prev_actions = actions.unsqueeze(0)
+    observation = do_action(actions[0], locobot)
+locobot.camera.pan_tilt_go_home()
