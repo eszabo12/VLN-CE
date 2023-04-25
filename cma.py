@@ -39,6 +39,7 @@ import os
 
 import sys
 import numpy as np
+import datetime
 # import rospy
 # sys.path.append('/home/elle/interbotix_ws/src/interbotix_ros_toolboxes/interbotix_xs_toolbox/interbotix_xs_modules/src/interbotix_xs_modules/')
 # from interbotix_xs_modules.locobot import InterbotixLocobotCreate3XS
@@ -53,6 +54,7 @@ from habitat.sims.habitat_simulator.actions import (
     HabitatSimV1ActionSpaceConfiguration,
 )
 from embeddings import BERTProcessor
+import matplotlib.pyplot as plt
 
 
 def do_action(action, locobot):
@@ -64,9 +66,9 @@ def do_action(action, locobot):
     elif action == 1:
         locobot.base.move(0.25, 0, 1.0)
     elif action == 2:
-        locobot.base.move(0.25, math.pi / 12.0, 1)
+        locobot.base.move(0.25, math.pi / 6, 1)
     elif action == 3:
-        locobot.base.move(0.25, math.pi / 12.0, 1)
+        locobot.base.move(0.25, math.pi / 6, 1)
     elif action == 4:
         locobot.camera.tilt(0.8)
         time.sleep(1)
@@ -102,6 +104,7 @@ def get_observation(locobot):
     depth_image = None
     if locobot != None:
         color_image, depth_image = locobot.base.get_img()
+        
         color_image = torch.Tensor(einops.repeat(color_image, 'm n l -> k m n l', k=batch_size)).long()
         print("rgb size", color_image.size())
         depth_image = torch.Tensor(einops.repeat(depth_image, 'm n l-> k m n l', k=batch_size))/ 255.0
@@ -175,6 +178,11 @@ not_done_masks = torch.zeros(
     1, 1, dtype=torch.uint8, device=device
 )
 
+
+#set up log files
+now = datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y")
+logfile = open("./logs/log " + now, "w")
+logfile.write("instruction: " + input_text + "\n")
 print("rnn states shape", rnn_states.shape)
 
 counter = 0
@@ -182,9 +190,13 @@ observation = get_observation(locobot)
 actions, rnn_states = policy.act(observation, rnn_states, prev_actions, not_done_masks)
 print("actions:", actions)
 max_actions = 10
-# while(observation != None and counter < max_actions):
-#     actions, rnn_states = policy.act(observation, rnn_states, prev_actions, not_done_masks)
-#     print("actions:", actions[0])
-#     counter += 1
-#     prev_actions = actions.unsqueeze(0)
+
+while(observation != None and counter < max_actions):
+    actions, rnn_states = policy.act(observation, rnn_states, prev_actions, not_done_masks)
+    print("actions:", actions[0])
+    counter += 1
+    # observation = do_action(action, locobot)
+    logfile.write("Action performed: " + str(actions[0]) + "\n")
+    prev_actions = actions.unsqueeze(0)
 # locobot.camera.pan_tilt_go_home()
+logfile.close()

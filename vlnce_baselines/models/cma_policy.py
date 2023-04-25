@@ -29,13 +29,14 @@ class CMA_Policy(ILPolicy):
         action_space: Space,
         model_config: Config,
     ) -> None:
+        print("action space n", action_space.n)
         super().__init__(
             CMANet(
                 observation_space=observation_space,
                 model_config=model_config,
                 num_actions=action_space.n,
             ),
-            2,
+            action_space.n,
         )
 
     @classmethod
