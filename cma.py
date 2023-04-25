@@ -55,6 +55,9 @@ from habitat.sims.habitat_simulator.actions import (
 from embeddings import BERTProcessor
 # import matplotlib as plt
 
+locobot = InterbotixLocobotCreate3XS(robot_model="locobot_base")
+
+
 def do_action(action, locobot):
     if locobot == None:
         return
@@ -81,7 +84,6 @@ observation = {
     "instruction" : gym.spaces.Box(low=0, high=100, shape=(vocab_size, seq_length)),
     "depth" : gym.spaces.Box(low=0, high=1, shape=(256, 256, 1)), # [BATCH, HEIGHT, WIDTH, CHANNEL] #480 originally 
     "rgb" : gym.spaces.Box(low=0, high=256, shape=(256, 256, 3))#imgs: must have pixel values ranging from 0-255. Assumes a size of [Bx3xHxW] # color frame shape og (480, 640, 3)
-
 }
 
 #input_text = "Go forward and then stop."
@@ -91,7 +93,6 @@ feats = processor.get_instruction_embeddings(input_text)
 image_crop = CenterCropper(256, tuple(("rgb")))
 depth_crop = CenterCropper(224, tuple(("depth")))
 print("done setting up")
-# instruction = extract_instruction_tokens(instruction) #this doesn't work
 def get_observation(locobot):
     observations = {}
     instruction = einops.repeat(feats, 'm a -> k m a', k=batch_size)

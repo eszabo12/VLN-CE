@@ -1,4 +1,5 @@
 ssh elle@elle-NUC10i3FNK
+ssh abrar@glamor-citrine.usc.edu
 
 from VLN-CE/habitat_extensions/config/vlnce_waypoint_task.yaml
   RGB_SENSOR:

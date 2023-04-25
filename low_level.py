@@ -51,7 +51,6 @@ from habitat.sims.habitat_simulator.actions import (
     HabitatSimActions,
     HabitatSimV1ActionSpaceConfiguration,
 )
-# from embeddings import BERTProcessor
 
 locobot = InterbotixLocobotCreate3XS(robot_model="locobot_base")
 
@@ -65,11 +64,9 @@ def do_action(action):
         locobot.base.move(0.25, 0, 1.0)
         # time.sleep(1)
     elif action == 2:
-        locobot.base.move(0.25, math.pi / 12.0, 1)
-        time.sleep(1)
+        locobot.base.move(0, math.pi / 3.0, 1.5)
     elif action == 3:
-        locobot.base.move(0.25, -math.pi / 12.0, 1)
-        time.sleep(1)
+        locobot.base.move(0, -math.pi / 3.0, 1.5)
     elif action == 4:
         locobot.camera.tilt(0.8)
         # time.sleep(1)
@@ -96,12 +93,18 @@ def square():
     time.sleep(0.5)
     print('done')
 
-square()
-# action = -1
-# while(action != 0):
-#     print("\noptions: \n0: End sequence \n1: Go forward \n2: Turn Left \n3: Turn right \n4: Look down \n5: Look up")
-#     action = int(input())
-#     if not action in range(6):
-#         print("Action not in range. Try again")
-#         continue
-#     do_action(action)
+actions = input("type actions: ")
+actions = actions.split()
+for action in actions:
+    if action == "go":
+        do_action(1)
+    elif action == "stop":
+        do_action(0)
+    elif action == "left":
+        do_action(2)
+    elif action == "right":
+        do_action(3)
+    elif action == "look_up":
+        do_action(4)
+    elif action == "look_down":
+        do_action(5)
