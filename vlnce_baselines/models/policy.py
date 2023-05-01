@@ -34,7 +34,6 @@ class ILPolicy(Policy, metaclass=abc.ABCMeta):
         features, rnn_states = self.net(
             observations, rnn_states, prev_actions, masks
         )
-        print('features shape', features.shape)
         # import pdb; pdb.set_trace()
         distribution = self.action_distribution(features)
         print(distribution)

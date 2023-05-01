@@ -36,6 +36,7 @@ import torchvision
 import cv2
 import time
 import os
+import datetime
 
 import sys
 import numpy as np
@@ -45,7 +46,6 @@ from interbotix_xs_modules.locobot import InterbotixLocobotCreate3XS
 import pyrealsense2 as rs
 from sensor_msgs.msg import Image
 import einops
-import time
 import math
 from habitat.core.simulator import ActionSpaceConfiguration
 from habitat.sims.habitat_simulator.actions import (
@@ -56,7 +56,7 @@ from embeddings import BERTProcessor
 # import matplotlib as plt
 
 locobot = InterbotixLocobotCreate3XS(robot_model="locobot_base")
-
+locobot.camera.pan_tilt_go_home()
 
 def do_action(action, locobot):
     if locobot == None:
@@ -77,17 +77,20 @@ def do_action(action, locobot):
     time.sleep(1)
     return get_observation(locobot)
 
-seq_length = 50
+#input_text = "Go forward and then stop."
+# input_text = "go all the way down to the end of the hallway and stop in front of the sofa and table. Turn left and continue until you hit the elevators."
+# input_text = 'go past the chair, towards the couch, and then take a right'
+input_text = "go forward, at the table turn right"
 vocab_size = 2504
 batch_size= 1
+seq_length = len(input_text.split())
 observation = {
     "instruction" : gym.spaces.Box(low=0, high=100, shape=(vocab_size, seq_length)),
     "depth" : gym.spaces.Box(low=0, high=1, shape=(256, 256, 1)), # [BATCH, HEIGHT, WIDTH, CHANNEL] #480 originally 
     "rgb" : gym.spaces.Box(low=0, high=256, shape=(256, 256, 3))#imgs: must have pixel values ranging from 0-255. Assumes a size of [Bx3xHxW] # color frame shape og (480, 640, 3)
 }
+# input_text = "go down the middle of the hallway. At the chairs and the table, turn right. Go into the crevice in between the two couches and face the window. Then turn around and walk towards the elevator. Face the elevator. At the elevator doors, turn left down the hallway. Once you see a wall, turn left. Stop when you see the black wheeled desk chair at the end of the hallway."
 
-#input_text = "Go forward and then stop."
-input_text = "go down the middle of the hallway. At the chairs and the table, turn right. Go into the crevice in between the two couches and face the window. Then turn around and walk towards the elevator. Face the elevator. At the elevator doors, turn left down the hallway. Once you see a wall, turn left. Stop when you see the black wheeled desk chair at the end of the hallway."
 processor = BERTProcessor()
 feats = processor.get_instruction_embeddings(input_text)
 image_crop = CenterCropper(256, tuple(("rgb")))
@@ -102,54 +105,45 @@ def get_observation(locobot):
     depth_image = None
     if locobot != None:
         color_image, depth_image = locobot.base.get_img()
-        print("color, depth size", color_image.shape, depth_image.shape)
+
+        #print("color, depth size", color_image.shape, depth_image.shape)
 
         depth_image = depth_image[112:368,192:448, :] / 255.0
         color_image = color_image[128:352, 208:432, :]
         color_image = torch.Tensor(color_image)
         depth_image = torch.Tensor(depth_image)
+        nans = torch.isnan(depth_image)
+        zeros = torch.zeros_like(depth_image)
+        depth_image = torch.where(nans, zeros, depth_image)
         observations["depth"] = depth_image.unsqueeze(0)
         observations["rgb"] = color_image.unsqueeze(0)
-
-    # torch.save(color_image, "./saved_images/rgb.pt")
-    # torch.save(depth_image, "./saved_images/depth.pt")
     else:
         color_image = torch.load("./saved_images/rgb.pt")
         depth_image = torch.load("./saved_images/depth.pt")
-        # observations = image_crop.transform_observation_space(observations)
-        # observations = depth_crop.transform_observation_space(observations)
         print(depth_image.size())
         print(color_image.size())
         depth_image = depth_image[0, 112:368,192:448] / 255.0
         color_image = color_image[0,128:352, 208:432]
         observations["depth"] = depth_image.unsqueeze(0)
         observations["rgb"] = color_image.unsqueeze(0)
-    # torch.save(color_image, "./saved_images/rgb.pt")
-    # torch.save(depth_image, "./saved_images/depth.pt")
     print("depth size", observations["depth"].size())
     print("rgb size", observations["rgb"].size())
-    # observations["rgb_history"] = color_image
-    # observations["depth_history"] = depth_image
-    # observations["angle_features"] = torch.zeros(10)
+
     return observations
-
-
-# locobot = None
-locobot = InterbotixLocobotCreate3XS(robot_model="locobot_base")
 
 observation_space = spaces.Dict(observation)
 
+#set up log files
+now = datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y")
+logfile = open("./logs/log " + now, "w")
+logfile.write("instruction: " + input_text + "\n")
 
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 #distance isn't continuous, but offset is. can try the other config files/actions later
 config = get_config(BASE_DIR + "/VLN-CE/vlnce_baselines/config/rxr_baselines/rxr_cma_en.yaml")
-# print(config.MODEL)
-#add the config.SIMULATOR attributes
 sim_config = get_config(BASE_DIR + "/VLN-CE/habitat_extensions/config/rxr_vlnce_english_task.yaml").SIMULATOR
-# step size config- uses v0
 step_config = get_config(BASE_DIR + "/VLN-CE/habitat_extensions/config/vlnce_task.yaml").SIMULATOR
-# print(step_config)
 sim_config.update(step_config)
 '''action space '''
 actions = HabitatSimV1ActionSpaceConfiguration(sim_config)
@@ -160,8 +154,6 @@ print(config.MODEL.DEPTH_ENCODER)
 policy = CMA_Policy(observation_space, action_space, config.MODEL)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # ---------from dagger trainer file----------
-
-expert_uuid = config.IL.DAGGER.expert_policy_sensor_uuid
 
 rnn_states = torch.zeros(
     1, #verify num_envs is 1 in the sim
@@ -185,11 +177,13 @@ counter = 0
 observation = get_observation(locobot)
 actions, rnn_states = policy.act(observation, rnn_states, prev_actions, not_done_masks)
 print("actions:", actions)
-max_actions = 10000
+max_actions = 50
 while(counter < max_actions):
     actions, rnn_states = policy.act(observation, rnn_states, prev_actions, not_done_masks)
     print("actions:", actions[0])
+    logfile.write("Action performed: " + str(actions[0]) + "\n")
     counter += 1
     prev_actions = actions.unsqueeze(0)
     observation = do_action(actions[0], locobot)
+    # observation = get_observation(locobot)
 locobot.camera.pan_tilt_go_home()

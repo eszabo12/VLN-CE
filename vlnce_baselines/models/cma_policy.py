@@ -37,6 +37,7 @@ class CMA_Policy(ILPolicy):
             ),
             action_space.n,
         )
+        torch.autograd.set_detect_anomaly(True)
 
     @classmethod
     def from_config(
@@ -222,16 +223,23 @@ class CMANet(Net):
         prev_actions: Tensor,
         masks: Tensor,
     ) -> Tuple[Tensor, Tensor]:
+        print(torch.sum(torch.isnan(observations["depth"])).item())
+
         instruction_embedding = self.instruction_encoder(observations)
+        print(torch.any(torch.isnan(instruction_embedding)))
+
         depth_embedding = self.depth_encoder(observations)
-        print("depth embedding size", depth_embedding.size())
         depth_embedding = torch.flatten(depth_embedding, 2)
+        print(torch.any(torch.isnan(depth_embedding)))
 
         rgb_embedding = self.rgb_encoder(observations)
         rgb_embedding = torch.flatten(rgb_embedding, 2)
+        print(torch.any(torch.isnan(rgb_embedding)))
+
         prev_actions = self.prev_action_embedding(
             ((prev_actions.float() + 1) * masks).long().view(-1)
         )
+        print(torch.any(torch.isnan(prev_actions)))
 
         if self.model_config.ablate_instruction:
             instruction_embedding = instruction_embedding * 0
@@ -242,6 +250,9 @@ class CMANet(Net):
 
         rgb_in = self.rgb_linear(rgb_embedding)
         depth_in = self.depth_linear(depth_embedding)
+        print(torch.any(torch.isnan(rgb_in)))
+        print(torch.any(torch.isnan(depth_in)))
+
         # I did this to make the whole concat 800 dim
         import einops
 

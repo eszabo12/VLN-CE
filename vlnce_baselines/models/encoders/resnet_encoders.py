@@ -96,7 +96,6 @@ class VlnResnetDepthEncoder(nn.Module):
             x = observations["depth_features"]
         else:
             x = self.visual_encoder(observations)
-        print("x size:", x.size())
 
         if self.spatial_output:
             b, c, h, w = x.size()
