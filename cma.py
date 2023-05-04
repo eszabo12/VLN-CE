@@ -53,10 +53,13 @@ from habitat.sims.habitat_simulator.actions import (
     HabitatSimV1ActionSpaceConfiguration,
 )
 from embeddings import BERTProcessor
+from PIL import Image as PILIMAGE
 # import matplotlib as plt
 
 locobot = InterbotixLocobotCreate3XS(robot_model="locobot_base")
 locobot.camera.pan_tilt_go_home()
+
+
 
 def do_action(action, locobot):
     if locobot == None:
@@ -65,22 +68,23 @@ def do_action(action, locobot):
         print("stop")
     elif action == 1:
         locobot.base.move(0.25, 0, 1.0)
+    #turn right
     elif action == 2:
-        locobot.base.move(0.25, -math.pi / 6.0, 1)
+        locobot.base.move(0.1, -math.pi / 6.0, 1.3)
+    #turn left
     elif action == 3:
-        locobot.base.move(0.25, math.pi / 6.0, 1)
+        locobot.base.move(0.1, math.pi / 6.0, 1.3)
     elif action == 4:
-        locobot.camera.tilt(0.8)
+        locobot.camera.tilt( -math.pi / 6.0)
         time.sleep(1)
     elif action == 5:
-        locobot.camera.tilt(-0.3)
+        locobot.camera.tilt(math.pi / 6.0)
     time.sleep(1)
     return get_observation(locobot)
 
-#input_text = "Go forward and then stop."
-# input_text = "go all the way down to the end of the hallway and stop in front of the sofa and table. Turn left and continue until you hit the elevators."
-# input_text = 'go past the chair, towards the couch, and then take a right'
-input_text = "go forward, at the table turn right"
+
+input_text = "Stay to the left of the towel then take a right toward the fridge."
+
 vocab_size = 2504
 batch_size= 1
 seq_length = len(input_text.split())
@@ -95,6 +99,10 @@ processor = BERTProcessor()
 feats = processor.get_instruction_embeddings(input_text)
 image_crop = CenterCropper(256, tuple(("rgb")))
 depth_crop = CenterCropper(224, tuple(("depth")))
+
+now = datetime.datetime.now().strftime("%I:%M:%S")
+folder_path = "./logs/" + now
+os.mkdir(folder_path)
 print("done setting up")
 def get_observation(locobot):
     observations = {}
@@ -107,11 +115,15 @@ def get_observation(locobot):
         color_image, depth_image = locobot.base.get_img()
 
         #print("color, depth size", color_image.shape, depth_image.shape)
-
-        depth_image = depth_image[112:368,192:448, :] / 255.0
-        color_image = color_image[128:352, 208:432, :]
         color_image = torch.Tensor(color_image)
         depth_image = torch.Tensor(depth_image)
+        depth_image = depth_image[:, 112:-112] / 255.0
+
+        color_image = color_image[:, 80:-80]
+        
+        color_image = torch.nn.functional.interpolate(color_image.transpose(0,-1).unsqueeze(0), size=224).transpose(1,-1).squeeze()
+        depth_image = torch.nn.functional.interpolate(depth_image.transpose(0,-1).unsqueeze(0), size=256).transpose(1,-1).squeeze()
+
         nans = torch.isnan(depth_image)
         zeros = torch.zeros_like(depth_image)
         depth_image = torch.where(nans, zeros, depth_image)
@@ -123,12 +135,16 @@ def get_observation(locobot):
         print(depth_image.size())
         print(color_image.size())
         depth_image = depth_image[0, 112:368,192:448] / 255.0
-        color_image = color_image[0,128:352, 208:432]
+        color_image = color_image[0, 80:-80]
+        torch.nn.functional.interpolate(color_image.float(), size=224)
         observations["depth"] = depth_image.unsqueeze(0)
         observations["rgb"] = color_image.unsqueeze(0)
     print("depth size", observations["depth"].size())
     print("rgb size", observations["rgb"].size())
 
+    im = PILIMAGE.fromarray(observations["rgb"].squeeze().numpy().astype(np.uint8))
+    now = datetime.datetime.now().strftime("%I:%M:%S")
+    im.save(folder_path +"/" + now + ".png", "PNG")
     return observations
 
 observation_space = spaces.Dict(observation)
@@ -177,7 +193,7 @@ counter = 0
 observation = get_observation(locobot)
 actions, rnn_states = policy.act(observation, rnn_states, prev_actions, not_done_masks)
 print("actions:", actions)
-max_actions = 50
+max_actions = 250
 while(counter < max_actions):
     actions, rnn_states = policy.act(observation, rnn_states, prev_actions, not_done_masks)
     print("actions:", actions[0])
@@ -185,5 +201,5 @@ while(counter < max_actions):
     counter += 1
     prev_actions = actions.unsqueeze(0)
     observation = do_action(actions[0], locobot)
-    # observation = get_observation(locobot)
 locobot.camera.pan_tilt_go_home()
+logfile.close()

@@ -53,58 +53,23 @@ from habitat.sims.habitat_simulator.actions import (
 )
 
 locobot = InterbotixLocobotCreate3XS(robot_model="locobot_base")
-
 def do_action(action):
     if locobot == None:
         return
     if action == 0:
         print("stop")
-        return None
     elif action == 1:
         locobot.base.move(0.25, 0, 1.0)
-        # time.sleep(1)
+    #turn left
     elif action == 2:
-        locobot.base.move(0, math.pi / 3.0, 1.5)
+        locobot.base.move(0.1, -math.pi / 6.0, 1.3)
     elif action == 3:
-        locobot.base.move(0, -math.pi / 3.0, 1.5)
+        locobot.base.move(0.1, math.pi / 6.0, 1.2)
     elif action == 4:
-        locobot.camera.tilt(0.8)
-        # time.sleep(1)
+        locobot.camera.tilt( math.pi / 6.0)
+        time.sleep(1)
     elif action == 5:
-        locobot.camera.tilt(-0.3)
-        # time.sleep(1)
-def square():
-    print('in square')
-    locobot.base.move(0.25, 0, 2.0)
-    time.sleep(0.5)
-    locobot.base.move(0.25, -math.pi/2, 1)
-    time.sleep(0.5)
-    locobot.base.move(0.25, 0, 2.0)
-    time.sleep(0.5)
-    locobot.base.move(0.25, -math.pi/2, 1)
-    time.sleep(0.5)
-    locobot.base.move(0.25, 0, 2.0)
-    time.sleep(0.5)
-    locobot.base.move(0.25, -math.pi/2, 1)
-    time.sleep(0.5)
-    locobot.base.move(0.25, 0, 2.0)
-    time.sleep(0.5)
-    locobot.base.move(0.25, -math.pi/2, 1)
-    time.sleep(0.5)
-    print('done')
+        locobot.camera.tilt(-0.2)
+    time.sleep(1)
 
-actions = input("type actions: ")
-actions = actions.split()
-for action in actions:
-    if action == "go":
-        do_action(1)
-    elif action == "stop":
-        do_action(0)
-    elif action == "left":
-        do_action(2)
-    elif action == "right":
-        do_action(3)
-    elif action == "look_up":
-        do_action(4)
-    elif action == "look_down":
-        do_action(5)
+do_action(5)

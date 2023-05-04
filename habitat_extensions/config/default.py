@@ -26,7 +26,7 @@ _C.TASK.ORACLE_ACTION_SENSOR.GOAL_RADIUS = 0.5
 # # RXR INSTRUCTION SENSOR
 # ----------------------------------------------------------------------------
 _C.TASK.RXR_INSTRUCTION_SENSOR = CN()
-_C.TASK.RXR_INSTRUCTION_SENSOR.TYPE = "RxRInstructionSensor"
+_C.TASK.RXR_INSTRUCTION_SENSOR.TYPE = "RxRInstructionBERTSensor"
 _C.TASK.RXR_INSTRUCTION_SENSOR.features_path = "data/datasets/RxR_VLNCE_v0/text_features/rxr_{split}/{id:06}_{lang}_text_features.npz"
 _C.TASK.INSTRUCTION_SENSOR_UUID = "rxr_instruction"
 # ----------------------------------------------------------------------------
